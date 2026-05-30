@@ -6,7 +6,8 @@ class AuthView {
         string $aba    = 'login',
         string $erro   = '',
         string $sucesso = '',
-        string $cpfLembrado = ''
+        string $cpfLembrado = '',
+        string $csrfToken = ''
     ): void {
 ?>
 <!DOCTYPE html>
@@ -247,6 +248,7 @@ class AuthView {
         <?php if ($aba === 'login'): ?>
         <form method="POST" action="?action=login" novalidate>
             <input type="hidden" name="action" value="login">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
 
             <div class="form-group">
                 <label for="cpf-login">CPF</label>
@@ -280,6 +282,7 @@ class AuthView {
         <?php elseif ($aba === 'cadastro'): ?>
         <form method="POST" action="?action=cadastro" novalidate>
             <input type="hidden" name="action" value="cadastro">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
 
             <div class="form-group">
                 <label for="nome-cad">Nome completo <span class="required">*</span></label>
@@ -331,6 +334,7 @@ class AuthView {
         <?php elseif ($aba === 'recuperar'): ?>
         <form method="POST" action="?action=recuperar" novalidate>
             <input type="hidden" name="action" value="recuperar">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
 
             <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.4;">
                 Informe seu <strong>CPF</strong> e <strong>data de nascimento</strong> cadastrados para redefinir sua senha.
