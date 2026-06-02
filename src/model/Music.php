@@ -167,4 +167,56 @@ class UserMusicRepository
             ON DUPLICATE KEY UPDATE downloaded = 1
         ")->execute([$userId, $musicId]);
     }
+
+    public function registerPlay(int $userId, int $musicId, array $musicData): void
+    {
+        if (!$musicId || empty($musicData['title']) || empty($musicData['artist'])) {
+            return;
+        }
+
+        $this->db->prepare("
+            INSERT IGNORE INTO musics (id, title, artist, duration, cover)
+            VALUES (?, ?, ?, ?, ?)
+        ")->execute([
+            $musicId,
+            $musicData['title'],
+            $musicData['artist'],
+            (int) ($musicData['duration'] ?? 0),
+            $musicData['cover'] ?? '',
+        ]);
+
+        $this->db->prepare("
+            INSERT INTO user_music_status (user_id, music_id, liked, downloaded, played_at)
+            VALUES (?, ?, 0, 0, CURRENT_TIMESTAMP)
+            ON DUPLICATE KEY UPDATE played_at = CURRENT_TIMESTAMP
+        ")->execute([$userId, $musicId]);
+    }
+
+    public function getRecentlyPlayed(int $userId, int $limit = 6): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                m.id, m.title, m.artist, m.duration, m.cover,
+                COALESCE(ums.liked, 0) AS liked,
+                COALESCE(ums.downloaded, 0) AS downloaded
+            FROM user_music_status ums
+            INNER JOIN musics m ON m.id = ums.music_id
+            WHERE ums.user_id = ? AND ums.played_at IS NOT NULL
+            ORDER BY ums.played_at DESC
+            LIMIT ?
+        ");
+        $stmt->execute([$userId, $limit]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return array_map(fn($r) => [
+            'id'         => $r['id'],
+            'title'      => $r['title'],
+            'artist'     => $r['artist'],
+            'duration'   => $r['duration'],
+            'cover'      => $r['cover'],
+            'liked'      => (bool) $r['liked'],
+            'downloaded' => (bool) $r['downloaded'],
+            'playlists'  => [],
+        ], $rows);
+    }
 }

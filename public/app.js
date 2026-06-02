@@ -3,6 +3,7 @@ const STATE = {
     currentIdx:   -1,
     playlists:    window.INITIAL_PLAYLISTS ?? [],
     pendingMusic: null,
+    repeat:       false,
 };
 
 const audio         = document.getElementById('audio-player');
@@ -25,12 +26,22 @@ const modalPlaylist = document.getElementById('modal-playlist');
 const modalAddPl    = document.getElementById('modal-add-pl');
 const modalPlList   = document.getElementById('modal-pl-list');
 const plNameInput   = document.getElementById('pl-name');
+const btnRepeat     = document.getElementById('btn-repeat');
+const playerBar     = document.querySelector('.player-bar');
 
+let audioCtx = null;
+let analyser = null;
+let sourceNode = null;
+let frequencyData = null;
+let currentWaveformHeights = [];
+const numBars = 65;
 
 async function playIndex(idx) {
     if (idx < 0 || idx >= STATE.queue.length) return;
     STATE.currentIdx = idx;
     const music = STATE.queue[idx];
+
+    generateSignatureWaveform(music.title, music.artist);
 
     document.querySelector('.player-now').classList.add('active');
     playerCover.src          = music.cover;
@@ -45,13 +56,16 @@ async function playIndex(idx) {
     showToast('Buscando áudio…');
 
     try {
-        const url  = `?action=preview&id=${encodeURIComponent(music.id)}&title=${encodeURIComponent(music.title)}&artist=${encodeURIComponent(music.artist)}`;
+        const url  = `?action=preview&id=${encodeURIComponent(music.id)}&title=${encodeURIComponent(music.title)}&artist=${encodeURIComponent(music.artist)}&cover=${encodeURIComponent(music.cover)}`;
         const res  = await fetch(url);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const json = await res.json();
         if (!json.url) throw new Error(json.error ?? 'Sem URL');
         audio.src    = json.url;
         audio.volume = volumeBar.value / 100;
+        
+        setupAudioVisualizer();
+        
         await audio.play();
         hideToast();
         prefetchNext(idx);
@@ -81,8 +95,19 @@ btnPlayPause.addEventListener('click', () => {
     if (!audio.src) return;
     audio.paused ? audio.play() : audio.pause();
 });
-audio.addEventListener('play',  () => { btnPlayPause.textContent = '⏸'; });
-audio.addEventListener('pause', () => { btnPlayPause.textContent = '▶'; });
+audio.addEventListener('play',  () => {
+    btnPlayPause.textContent = '⏸';
+    playerBar?.classList.add('playing');
+});
+audio.addEventListener('pause', () => {
+    btnPlayPause.textContent = '▶';
+    playerBar?.classList.remove('playing');
+});
+
+btnRepeat?.addEventListener('click', () => {
+    STATE.repeat = !STATE.repeat;
+    btnRepeat.classList.toggle('active', STATE.repeat);
+});
 
 btnPrev.addEventListener('click', () =>
     playIndex(STATE.currentIdx > 0 ? STATE.currentIdx - 1 : STATE.queue.length - 1)
@@ -90,9 +115,14 @@ btnPrev.addEventListener('click', () =>
 btnNext.addEventListener('click', () =>
     playIndex(STATE.currentIdx < STATE.queue.length - 1 ? STATE.currentIdx + 1 : 0)
 );
-audio.addEventListener('ended', () =>
-    playIndex(STATE.currentIdx < STATE.queue.length - 1 ? STATE.currentIdx + 1 : 0)
-);
+audio.addEventListener('ended', () => {
+    if (STATE.repeat) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+    } else {
+        playIndex(STATE.currentIdx < STATE.queue.length - 1 ? STATE.currentIdx + 1 : 0);
+    }
+});
 
 audio.addEventListener('timeupdate', () => {
     if (!audio.duration) return;
@@ -116,6 +146,28 @@ function fmt(sec) {
 }
 
 document.addEventListener('click', async e => {
+
+    const saveBio = e.target.closest('#btn-save-bio');
+    if (saveBio) {
+        const textarea = document.getElementById('bio-textarea-input');
+        const bio = textarea ? textarea.value : '';
+        saveBio.disabled = true;
+        try {
+            const res = await fetch('?action=save_bio&ajax=1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bio })
+            });
+            if (!res.ok) throw new Error('Erro ao salvar');
+            showToast('Biografia atualizada!');
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao salvar biografia.');
+        } finally {
+            saveBio.disabled = false;
+        }
+        return;
+    }
 
     if (!e.target.closest('.add-wrapper'))
         document.querySelectorAll('.add-menu:not([hidden])').forEach(m => m.hidden = true);
@@ -215,9 +267,23 @@ async function toggleLike(card, btn) {
 
 async function searchMusic() {
     const q = searchInput?.value.trim();
-    if (!q) return;
+    if (!q) {
+        navigateTo('?action=music');
+        return;
+    }
     const grid = document.getElementById('music-list');
     if (!grid) return;
+
+    const recentlyPlayedWrap = document.querySelector('.recently-played-wrapper');
+    if (recentlyPlayedWrap) {
+        recentlyPlayedWrap.style.display = 'none';
+    }
+
+    const homeSectionTitle = document.getElementById('home-section-title');
+    if (homeSectionTitle) {
+        homeSectionTitle.textContent = 'Resultados da busca';
+    }
+
     grid.innerHTML = skeletons(8);
     try {
         const res    = await fetch(`?action=search&q=${encodeURIComponent(q)}`);
@@ -425,12 +491,13 @@ function renderCard(music) {
 
 function addPlaylistToSidebar(pl) {
     const list = document.getElementById('playlist-list');
+    if (!list) return;
     const li   = document.createElement('li');
     li.className  = 'playlist-item';
     li.dataset.id = pl.id;
     li.innerHTML  = `
         <a href="?action=playlist&id=${pl.id}" title="${esc(pl.name)}">
-            ${esc(pl.name.substring(0, 2).toUpperCase())}
+            ${esc(pl.name)}
         </a>
         <button class="btn-delete-playlist" data-id="${pl.id}" title="Excluir playlist">×</button>`;
     list.appendChild(li);
@@ -546,3 +613,233 @@ function prefetchNext(idx) {
     const url = `?action=preview&id=${encodeURIComponent(nextMusic.id)}&title=${encodeURIComponent(nextMusic.title)}&artist=${encodeURIComponent(nextMusic.artist)}`;
     fetch(url).catch(() => {});
 }
+
+// === MUSA Social Interaction Listeners ===
+
+document.addEventListener('submit', async e => {
+    // 1. Criar novo post
+    if (e.target.id === 'social-post-form') {
+        e.preventDefault();
+        const content = document.getElementById('post-content').value.trim();
+        const select = document.getElementById('post-attachment');
+        const attachmentValue = select ? select.value : '';
+
+        let musicId = null;
+        let playlistId = null;
+
+        if (attachmentValue.startsWith('music_')) {
+            musicId = parseInt(attachmentValue.replace('music_', ''));
+        } else if (attachmentValue.startsWith('playlist_')) {
+            playlistId = parseInt(attachmentValue.replace('playlist_', ''));
+        }
+
+        const btnSubmit = e.target.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.disabled = true;
+
+        try {
+            const res = await fetch('?action=social_post&ajax=1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ conteudo: content, musica_id: musicId, playlist_id: playlistId })
+            });
+
+            if (!res.ok) throw new Error('Erro ao postar');
+
+            showToast('Publicado com sucesso!');
+            navigateTo('?action=social');
+        } catch (err) {
+            console.error(err);
+            showToast('Não foi possível publicar.');
+        } finally {
+            if (btnSubmit) btnSubmit.disabled = false;
+        }
+    }
+
+    // 2. Enviar resposta/comentário
+    if (e.target.id === 'social-comment-form') {
+        e.preventDefault();
+        const postId = parseInt(e.target.dataset.postId);
+        const content = document.getElementById('comment-content').value.trim();
+
+        const btnSubmit = e.target.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.disabled = true;
+
+        try {
+            const res = await fetch('?action=social_comment&ajax=1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: postId, conteudo: content })
+            });
+
+            if (!res.ok) throw new Error('Erro ao comentar');
+
+            showToast('Resposta enviada!');
+            navigateTo('?action=social_view&id=' + postId);
+        } catch (err) {
+            console.error(err);
+            showToast('Não foi possível comentar.');
+        } finally {
+            if (btnSubmit) btnSubmit.disabled = false;
+        }
+    }
+});
+
+document.addEventListener('click', async e => {
+    // 3. Curtir Post
+    const btnLike = e.target.closest('.btn-social-like');
+    if (btnLike) {
+        e.preventDefault();
+        const postId = parseInt(btnLike.dataset.id);
+        btnLike.disabled = true;
+
+        try {
+            const res = await fetch('?action=social_like&ajax=1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: postId })
+            });
+
+            if (!res.ok) throw new Error('Erro ao curtir');
+            const json = await res.json();
+
+            btnLike.classList.toggle('liked', json.liked);
+            const countSpan = btnLike.querySelector('.like-count');
+            if (countSpan) {
+                countSpan.textContent = json.likes_count;
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao curtir.');
+        } finally {
+            btnLike.disabled = false;
+        }
+        return;
+    }
+
+    // 4. Repostar Post
+    const btnRepost = e.target.closest('.btn-social-repost');
+    if (btnRepost) {
+        e.preventDefault();
+        if (!confirm('Deseja repostar esta publicação?')) return;
+        const postId = parseInt(btnRepost.dataset.id);
+        btnRepost.disabled = true;
+
+        try {
+            const res = await fetch('?action=social_repost&ajax=1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: postId })
+            });
+
+            if (!res.ok) throw new Error('Erro ao repostar');
+
+            showToast('Repostado com sucesso!');
+            navigateTo('?action=social');
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao repostar.');
+        } finally {
+            btnRepost.disabled = false;
+        }
+        return;
+    }
+});
+
+// Waveform visualizer drawing & animation engine (SoundCloud style)
+function setupAudioVisualizer() {
+    // CORS-safe implementation: visualizer runs dynamically in JS to guarantee perfect audio playback
+}
+
+function generateSignatureWaveform(title, artist) {
+    const seedStr = (title || '') + (artist || '');
+    let hash = 0;
+    for (let i = 0; i < seedStr.length; i++) {
+        hash = seedStr.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    currentWaveformHeights = [];
+    for (let i = 0; i < numBars; i++) {
+        const val = 0.2 + Math.abs(Math.sin(hash + i * 1.5)) * 0.75;
+        currentWaveformHeights.push(val);
+    }
+}
+
+function drawWaveform() {
+    const canvas = document.getElementById('waveform-canvas');
+    if (!canvas) {
+        requestAnimationFrame(drawWaveform);
+        return;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        requestAnimationFrame(drawWaveform);
+        return;
+    }
+    
+    const rect = canvas.getBoundingClientRect();
+    if (canvas.width !== rect.width || canvas.height !== rect.height) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+    }
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const pct = audio.duration ? (audio.currentTime / audio.duration) : 0;
+    const barWidth = canvas.width / numBars;
+    const gap = 2.5;
+    const time = Date.now() * 0.006;
+    
+    const activeGrad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    activeGrad.addColorStop(0, '#6c63ff');
+    activeGrad.addColorStop(1, '#ff6584');
+    
+    for (let i = 0; i < numBars; i++) {
+        const baseHeight = currentWaveformHeights[i] || 0.45;
+        let scale = 1.0;
+        
+        if (!audio.paused) {
+            // Pulse base frequency (beat)
+            const beat = Math.sin(time * 3.5) * Math.cos(time * 1.5);
+            const activeBeat = Math.max(0, beat) * 0.4;
+            
+            // Traveling wave along the bar indices
+            const wave = Math.sin(time * 2.0 - i * 0.25) * 0.25;
+            
+            // Micro-jitter to simulate high-frequency ticks
+            const jitter = Math.sin(time * 15.0 + i) * 0.08;
+            
+            scale = 0.55 + activeBeat + wave + jitter;
+        }
+        
+        const height = Math.max(0.1, Math.min(1.1, baseHeight * scale));
+        const hPixels = height * (canvas.height * 0.82);
+        const x = i * barWidth + gap / 2;
+        const y = (canvas.height - hPixels) / 2;
+        const w = barWidth - gap;
+        
+        const isPast = (i / numBars) <= pct;
+        ctx.fillStyle = isPast ? activeGrad : 'rgba(255, 255, 255, 0.12)';
+        
+        drawRoundedRect(ctx, x, y, w, hPixels, 2);
+    }
+    
+    requestAnimationFrame(drawWaveform);
+}
+
+function drawRoundedRect(ctx, x, y, width, height, radius) {
+    if (width <= 0 || height <= 0) return;
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+}
+
+// Start continuous animation loop
+requestAnimationFrame(drawWaveform);

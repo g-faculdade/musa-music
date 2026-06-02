@@ -29,7 +29,7 @@ class MusicController
         match ($action) {
             'music'           => $this->musicFeed((int) $userId),
             'search'          => $this->search((int) $userId),
-            'preview'         => $this->preview(),
+            'preview'         => $this->preview((int) $userId),
             'like'            => $this->like((int) $userId),
             'liked'           => $this->likedPage((int) $userId),
             'playlist'        => $this->playlistPage((int) $userId),
@@ -39,6 +39,8 @@ class MusicController
             'delete_playlist' => $this->deletePlaylist((int) $userId),
             'download'        => $this->download((int) $userId),
             'downloaded'      => $this->downloadedPage((int) $userId),
+            'profile'         => $this->profilePage((int) $userId),
+            'save_bio'        => $this->saveBio((int) $userId),
             default           => $this->json(['error' => 'Ação não encontrada'], 404),
         };
     }
@@ -47,6 +49,7 @@ class MusicController
     {
         $this->view->home(
             $this->service->getMusicFeed($userId),
+            $this->service->getRecentlyPlayed($userId),
             $this->service->getUserPlaylists($userId),
             $_SESSION['usuario_nome'] ?? 'U'
         );
@@ -104,13 +107,44 @@ class MusicController
         );
     }
 
+    private function profilePage(int $userId): void
+    {
+        require_once __DIR__ . '/../model/Usuario.php';
+        $usuarioModel = new Usuario(Conexao::getInstance());
+        $user = $usuarioModel->buscarPorId($userId);
+
+        if (!$user) {
+            header('Location: ?action=login');
+            exit;
+        }
+
+        $this->view->profile(
+            $user,
+            $this->service->getLikedMusics($userId),
+            $this->service->getUserPlaylists($userId),
+            $_SESSION['usuario_nome'] ?? 'U'
+        );
+    }
+
+    private function saveBio(int $userId): void
+    {
+        $body = $this->body();
+        $bio  = trim($body['bio'] ?? '');
+
+        require_once __DIR__ . '/../model/Usuario.php';
+        $usuarioModel = new Usuario(Conexao::getInstance());
+        
+        $ok = $usuarioModel->salvarBio($userId, $bio);
+        $this->json(['ok' => $ok, 'bio' => $bio]);
+    }
+
     private function search(int $userId): void
     {
         $q = trim($_GET['q'] ?? '');
         $this->json($q !== '' ? $this->service->getSearchMusic($userId, $q) : []);
     }
 
-    private function preview(): void
+    private function preview(int $userId): void
     {
         $id     = (int)   ($_GET['id']     ?? 0);
         $title  = trim($_GET['title']  ?? '');
@@ -119,6 +153,15 @@ class MusicController
         if (!$title || !$artist) {
             $this->json(['error' => 'Parâmetros inválidos'], 400);
             return;
+        }
+
+        if ($id) {
+            $this->service->registerPlay($userId, $id, [
+                'title'    => $title,
+                'artist'   => $artist,
+                'duration' => 0,
+                'cover'    => $_GET['cover'] ?? '',
+            ]);
         }
 
         if ($id && $localUrl = $this->player->getLocalUrl($id)) {

@@ -83,6 +83,11 @@ class AuthController
             $dataNasc     = trim($_POST['data_nascimento'] ?? '');
             $senha        = $_POST['senha']                ?? '';
             $confirmSenha = $_POST['confirmar_senha']      ?? '';
+            $tipo         = trim($_POST['tipo']            ?? 'normal');
+
+            if (!in_array($tipo, ['normal', 'premium', 'artista'])) {
+                $tipo = 'normal';
+            }
 
             if (!$nome || !$email || !$cpf || !$dataNasc || !$senha) {
                 $this->view->renderAuth('cadastro', erro: 'Preencha todos os campos obrigatórios.', csrfToken: $csrf);
@@ -110,7 +115,7 @@ class AuthController
                 return;
             }
 
-            $ok = $this->usuario->criar($nome, $email, $senha, $cpf, $dataNasc);
+            $ok = $this->usuario->criar($nome, $email, $senha, $cpf, $dataNasc, $tipo);
 
             if ($ok) {
                 $cpfLembrado = $_COOKIE['lembrar_cpf'] ?? '';

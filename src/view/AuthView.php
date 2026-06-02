@@ -165,6 +165,28 @@ class AuthView {
             border-color: var(--accent); 
             box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
         }
+        .form-group select {
+            width: 100%;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.9rem 1.15rem;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 1rem;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237878a0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1.15rem center;
+            background-size: 1.2rem;
+            cursor: pointer;
+        }
+        .form-group select:focus { 
+            border-color: var(--accent); 
+            box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+        }
 
         .form-row {
             display: flex;
@@ -322,6 +344,15 @@ class AuthView {
                     <input type="password" id="conf-cad" name="confirmar_senha"
                            placeholder="Repita" required>
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label for="tipo-cad">Tipo de Conta <span class="required">*</span></label>
+                <select id="tipo-cad" name="tipo" required>
+                    <option value="normal">Usuário Normal</option>
+                    <option value="premium">Membro Premium 🎵</option>
+                    <option value="artista">Artista Oficial (Selo Roxo)</option>
+                </select>
             </div>
 
             <button type="submit" class="btn-primary">Criar Conta</button>

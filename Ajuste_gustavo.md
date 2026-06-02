@@ -374,4 +374,34 @@ index d8dd1d8..4467428 100644
 
 ---
 
+## 6. Novas Funcionalidades: MUSA Social, Reestruturação, Tocador Avançado & Perfil
+
+Adicionamos uma grande onda de novas funcionalidades integradas e uma reestruturação do layout do reprodutor:
+
+### 6.1 MUSA Social (Rede Social no Estilo Threads)
+- **Tabelas do Banco de Dados**: A criação automática de tabelas em `Conexao.php` agora cria dinamicamente as tabelas `posts`, `post_likes` e `post_comments` no MySQL caso não existam.
+- **Reposts, Curtidas e Comentários**: Desenvolvemos suporte completo a postagens com texto, anexação dinâmica de playlists e músicas curtidas, curtidas reativas no feed, reposts referenciando o autor original e uma caixa de comentários.
+- **Fluxo "Veja Mais"**: Exibimos até 3 comentários por post no feed. Quando houver mais, um link de navegação assíncrona "Veja mais" direciona o usuário para a página dedicada do post com a lista completa e caixa de resposta interativa.
+- **Modelagem e Controladores**: Centralizados no `SocialRepository.php`, `SocialController.php` e `SocialView.php`.
+
+### 6.2 Reestruturação da Barra Lateral (2 Colunas)
+- **Fim da Terceira Coluna**: Removemos a barra lateral da direita `.sidebar-library` e integramos tudo em uma barra lateral esquerda `.sidebar-nav` com nomes amigáveis em texto:
+  - `♪ Músicas`
+  - `👥 Social`
+  - `♥ Mais Curtidas`
+  - `↓ Baixadas`
+  - `+ Criar Playlist`
+- As playlists ficam dispostas verticalmente sob o menu em uma seção própria.
+
+### 6.3 Recursos Avançados no Tocador de Áudio
+- **Repetição de Faixa (🔁)**: Mapeado pelo ID `#btn-repeat` no rodapé. Quando ativado, a música se repete ao final (`ended` event no audio player) em vez de pular.
+- **Barra de Progresso Ondulante (SoundCloud style)**: Modificamos a `.progress-track` com uma máscara SVG inline de ondas de som (`mask-image` com SVG de barras verticais e `height: 14px`). O preenchimento ocorre da esquerda para a direita de forma animada e brilhante (`waveGlow`) quando tocando.
+- **Mini Equalizador Gráfico**: Um conjunto de 3 mini barras animadas (`#player-mini-bars`) pulsa ao lado do título da música quando o áudio está em execução e congela quando pausado.
+
+### 6.4 Página de Perfil do Usuário
+- **Visual Premium**: Nova página acessível via menu suspenso do avatar (`?action=profile`). Exibe um cartão com o avatar de inicial grande (com gradiente de cores da marca), nome, email, data de cadastro do usuário.
+- **Músicas Curtidas**: Lista todas as faixas favoritas em grid, totalmente integradas à reprodução SPA e ações de curtidas.
+
+---
+
 Qualquer dúvida técnica na arquitetura, fique à vontade para consultar este documento. Os ajustes estão testados, funcionais e totalmente integrados. Bom trabalho, Gustavo!

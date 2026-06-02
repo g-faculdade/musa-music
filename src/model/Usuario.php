@@ -13,10 +13,11 @@ class Usuario {
         string $email,
         string $senha,
         string $cpf,
-        string $data_nascimento
+        string $data_nascimento,
+        string $tipo = 'normal'
     ): bool {
-        $sql = "INSERT INTO usuarios (nome, email, senha, cpf, data_nascimento)
-                VALUES (:nome, :email, :senha, :cpf, :data_nascimento)";
+        $sql = "INSERT INTO usuarios (nome, email, senha, cpf, data_nascimento, tipo)
+                VALUES (:nome, :email, :senha, :cpf, :data_nascimento, :tipo)";
 
         $senhaHash = password_hash($senha, PASSWORD_DEFAULT);
 
@@ -27,6 +28,7 @@ class Usuario {
             ':senha'           => $senhaHash,
             ':cpf'             => preg_replace('/\D/', '', $cpf),
             ':data_nascimento' => $data_nascimento,
+            ':tipo'            => $tipo,
         ]);
     }
 
@@ -78,5 +80,14 @@ class Usuario {
         $sql  = "DELETE FROM usuarios WHERE id = :id";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([':id' => $id]);
+    }
+
+    public function salvarBio(int $id, string $bio): bool {
+        $sql  = "UPDATE usuarios SET bio = :bio WHERE id = :id";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([
+            ':bio' => mb_substr($bio, 0, 255),
+            ':id'  => $id,
+        ]);
     }
 }

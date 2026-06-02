@@ -77,6 +77,16 @@ class MusicService
         $this->musicRepo->markDownloaded($userId, $musicId, $musicData);
     }
 
+    public function registerPlay(int $userId, int $musicId, array $musicData): void
+    {
+        $this->musicRepo->registerPlay($userId, $musicId, $musicData);
+    }
+
+    public function getRecentlyPlayed(int $userId): array
+    {
+        return $this->musicRepo->getRecentlyPlayed($userId);
+    }
+
     private function formatter(array $musics): array
     {
         $result = [];
