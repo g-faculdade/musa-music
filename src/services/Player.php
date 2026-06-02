@@ -33,6 +33,11 @@ class Player
     public function getStreamUrl(string $title, string $artist): ?string
     {
         $query = $artist . ' ' . $title;
+
+        if ($cachedUrl = $this->getCachedUrl($query)) {
+            return $cachedUrl;
+        }
+
         $bin   = escapeshellarg(realpath($this->ytDlp) ?: $this->ytDlp);
 
         $cmd = $bin
@@ -50,9 +55,13 @@ class Player
 
         $this->log("URL: $url");
 
-        return ($url !== '' && str_starts_with($url, 'http')) ? $url : null;
-    }
+        if ($url !== '' && str_starts_with($url, 'http')) {
+            $this->setCachedUrl($query, $url);
+            return $url;
+        }
 
+        return null;
+    }
     public function download(int $musicId, string $title, string $artist): ?string
     {
         $filename  = 'music_' . $musicId . '.mp3';
@@ -65,13 +74,16 @@ class Player
 
         $query      = $artist . ' ' . $title;
         $bin        = escapeshellarg(realpath($this->ytDlp)  ?: $this->ytDlp);
-        $ffmpegDir  = escapeshellarg(realpath(dirname($this->ffmpeg)) ?: dirname($this->ffmpeg));
+        $ffmpegBin  = escapeshellarg(realpath($this->ffmpeg) ?: $this->ffmpeg);
 
-        $cmd = 'HOME=/tmp ' . $bin
+        $isWindows  = PHP_OS_FAMILY === 'Windows';
+        $prefix     = $isWindows ? '' : 'HOME=/tmp ';
+
+        $cmd = $prefix . $bin
             . ' -f "bestaudio/best"'
             . ' --no-playlist'
             . ' --no-check-certificate'
-            . ' --ffmpeg-location ' . $ffmpegDir
+            . ' --ffmpeg-location ' . $ffmpegBin
             . ' -x --audio-format mp3 --audio-quality 192K'
             . ' -o ' . escapeshellarg($outPath)
             . ' ' . escapeshellarg('ytsearch1:' . $query)
@@ -98,6 +110,41 @@ class Player
     public function getLog(): string
     {
         return file_exists($this->logFile) ? file_get_contents($this->logFile) : '';
+    }
+
+    private function getCachedUrl(string $query): ?string
+    {
+        $cacheFile = $this->downloadDir . '/stream_cache.json';
+        if (!file_exists($cacheFile)) {
+            return null;
+        }
+        $cache = json_decode(file_get_contents($cacheFile), true);
+        if (!is_array($cache)) {
+            return null;
+        }
+        if (isset($cache[$query])) {
+            $entry = $cache[$query];
+            if (isset($entry['url']) && isset($entry['expires_at']) && $entry['expires_at'] > time()) {
+                $this->log("CACHE HIT: $query");
+                return $entry['url'];
+            }
+        }
+        return null;
+    }
+
+    private function setCachedUrl(string $query, string $url): void
+    {
+        $cacheFile = $this->downloadDir . '/stream_cache.json';
+        $cache = [];
+        if (file_exists($cacheFile)) {
+            $cache = json_decode(file_get_contents($cacheFile), true) ?: [];
+        }
+        $cache[$query] = [
+            'url'        => $url,
+            'expires_at' => time() + (4 * 3600), // 4 hours
+        ];
+        file_put_contents($cacheFile, json_encode($cache, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        $this->log("CACHE WRITE: $query");
     }
 
     private function log(string $msg): void

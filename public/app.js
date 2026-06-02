@@ -19,7 +19,6 @@ const timeDuration  = document.getElementById('time-duration');
 const volumeBar     = document.getElementById('volume-bar');
 const volumeFill    = document.getElementById('volume-fill');
 const toastEl       = document.getElementById('toast');
-const musicList     = document.getElementById('music-list');
 const searchInput   = document.getElementById('search-input');
 const profileMenu   = document.getElementById('profile-menu');
 const modalPlaylist = document.getElementById('modal-playlist');
@@ -55,6 +54,7 @@ async function playIndex(idx) {
         audio.volume = volumeBar.value / 100;
         await audio.play();
         hideToast();
+        prefetchNext(idx);
     } catch (e) {
         console.error('preview error:', e);
         showToast('Não foi possível reproduzir esta música.');
@@ -216,19 +216,21 @@ async function toggleLike(card, btn) {
 async function searchMusic() {
     const q = searchInput?.value.trim();
     if (!q) return;
-    musicList.innerHTML = skeletons(8);
+    const grid = document.getElementById('music-list');
+    if (!grid) return;
+    grid.innerHTML = skeletons(8);
     try {
         const res    = await fetch(`?action=search&q=${encodeURIComponent(q)}`);
         const musics = await res.json();
         if (!Array.isArray(musics) || !musics.length) {
-            musicList.innerHTML = '<div class="empty"><p>Nenhuma música encontrada.</p></div>';
+            grid.innerHTML = '<div class="empty"><p>Nenhuma música encontrada.</p></div>';
             return;
         }
-        musicList.innerHTML = musics.map(renderCard).join('');
+        grid.innerHTML = musics.map(renderCard).join('');
         rebuildQueue();
     } catch {
         showToast('Erro na busca.');
-        musicList.innerHTML = '';
+        grid.innerHTML = '';
     }
 }
 
@@ -461,3 +463,86 @@ function showToast(msg) {
 function hideToast() { toastEl.classList.remove('show'); }
 
 rebuildQueue();
+
+
+// === SPA / AJAX Navigation ===
+
+document.addEventListener('click', e => {
+    const link = e.target.closest('a');
+    if (!link) return;
+
+    const href = link.getAttribute('href');
+    if (href && href.startsWith('?action=') && !href.includes('action=login')) {
+        e.preventDefault();
+        navigateTo(href);
+    }
+});
+
+function updateActiveNav(url) {
+    document.querySelectorAll('.sidebar-nav .nav-link, .sidebar-library .library-item, .playlist-item a').forEach(el => {
+        el.classList.remove('active');
+    });
+
+    const normalizedUrl = url.split('&ajax=')[0];
+
+    const activeLink = document.querySelector(`a[href="${normalizedUrl}"], a[href^="${normalizedUrl}&"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+}
+
+function updatePlayingCardHighlight() {
+    if (STATE.currentIdx !== -1 && STATE.queue[STATE.currentIdx]) {
+        const music = STATE.queue[STATE.currentIdx];
+        document.querySelectorAll('.music-card.playing').forEach(c => c.classList.remove('playing'));
+        document.querySelector(`.music-card[data-id="${music.id}"]`)?.classList.add('playing');
+    }
+}
+
+async function navigateTo(url, pushState = true) {
+    try {
+        const separator = url.includes('?') ? '&' : '?';
+        const res = await fetch(url + separator + 'ajax=1');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        const json = await res.json();
+
+        document.title = json.title;
+
+        const contentArea = document.getElementById('content-area');
+        if (contentArea) {
+            contentArea.innerHTML = json.html;
+        }
+
+        updateActiveNav(url);
+        updatePlayingCardHighlight();
+
+        if (pushState) {
+            history.pushState({ url }, json.title, url);
+        }
+    } catch (e) {
+        console.error('navigation error:', e);
+        showToast('Não foi possível carregar a página.');
+    }
+}
+
+window.addEventListener('popstate', e => {
+    if (e.state && e.state.url) {
+        navigateTo(e.state.url, false);
+    } else {
+        navigateTo(window.location.search || '?action=music', false);
+    }
+});
+
+// === Background pre-fetching ===
+
+function prefetchNext(idx) {
+    const nextIdx = idx < STATE.queue.length - 1 ? idx + 1 : 0;
+    if (nextIdx === idx || nextIdx < 0 || nextIdx >= STATE.queue.length) return;
+
+    const nextMusic = STATE.queue[nextIdx];
+    if (nextMusic.downloaded === '1') return;
+
+    const url = `?action=preview&id=${encodeURIComponent(nextMusic.id)}&title=${encodeURIComponent(nextMusic.title)}&artist=${encodeURIComponent(nextMusic.artist)}`;
+    fetch(url).catch(() => {});
+}

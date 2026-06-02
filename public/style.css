@@ -144,6 +144,10 @@ html, body {
     transform: scale(1.06);
     box-shadow: 0 4px 20px rgba(108,99,255,0.35);
 }
+.library-item.active {
+    transform: scale(1.06);
+    box-shadow: 0 4px 20px rgba(108,99,255,0.6), 0 0 0 2px var(--text);
+}
 
 .library-icon {
     font-size: 1.3rem;
@@ -215,10 +219,13 @@ html, body {
     white-space: nowrap;
     text-overflow: ellipsis;
 }
-.playlist-item a:hover {
+.playlist-item a:hover, .playlist-item a.active {
     background: var(--border);
     color: var(--text);
     border-color: var(--accent);
+}
+.playlist-item a.active {
+    box-shadow: 0 0 8px rgba(108,99,255,0.4);
 }
 
 /* ══════════════════════════════════════

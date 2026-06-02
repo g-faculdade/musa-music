@@ -58,6 +58,20 @@ class MusicView
         string   $activeNav,
         callable $content
     ): void {
+        if (isset($_GET['ajax'])) {
+            ob_start();
+            ($content)();
+            $html = ob_get_clean();
+
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'title'     => $title,
+                'activeNav' => $activeNav,
+                'html'      => $html,
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
         $initial = htmlspecialchars(strtoupper(mb_substr($userName, 0, 1)));
 ?>
 <!DOCTYPE html>
@@ -164,7 +178,9 @@ class MusicView
             </div>
         </header>
 
-        <?php ($content)(); ?>
+        <div id="content-area">
+            <?php ($content)(); ?>
+        </div>
     </main>
 </div>
 
