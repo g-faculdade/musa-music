@@ -141,7 +141,7 @@ class Player
         }
         $cache[$query] = [
             'url'        => $url,
-            'expires_at' => time() + (4 * 3600), // 4 hours
+            'expires_at' => time() + (4 * 3600),
         ];
         file_put_contents($cacheFile, json_encode($cache, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
         $this->log("CACHE WRITE: $query");

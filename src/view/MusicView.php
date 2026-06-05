@@ -189,7 +189,7 @@ class MusicView
             </li>
             <li>
                 <a href="?action=social" class="nav-link <?= $activeNav === 'social' ? 'active' : '' ?>">
-                    <span class="nav-icon">👥</span> Social
+                    <span class="nav-icon">☰</span> Social
                 </a>
             </li>
             <li>
@@ -272,7 +272,7 @@ class MusicView
             <button class="ctrl-btn" id="btn-prev"       aria-label="Anterior">⏮</button>
             <button class="ctrl-btn ctrl-play" id="btn-play-pause" aria-label="Play/Pause">▶</button>
             <button class="ctrl-btn" id="btn-next"       aria-label="Próxima">⏭</button>
-            <button class="ctrl-btn" id="btn-repeat"     aria-label="Repetir">🔁</button>
+            <button class="ctrl-btn" id="btn-repeat"     aria-label="Repetir">↺</button>
         </div>
         <div class="progress-row">
             <span class="time" id="time-current">0:00</span>
@@ -285,7 +285,7 @@ class MusicView
         </div>
     </div>
     <div class="player-right">
-        <span class="volume-icon" aria-hidden="true">🔊</span>
+        <span class="volume-icon" aria-hidden="true">🔊︎</span>
         <div class="volume-track">
             <div class="volume-fill" id="volume-fill"></div>
             <input type="range" id="volume-bar" value="80" min="0" max="100" step="1" aria-label="Volume">

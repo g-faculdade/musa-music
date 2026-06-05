@@ -13,7 +13,7 @@ class SocialView extends MusicView
             activeNav: 'social',
             content:   function() use ($feed, $likedSongs, $playlists) {
                 ?>
-                <h2 class="section-title">👥 Musa Social</h2>
+                <h2 class="section-title">☰ Musa Social</h2>
                 
                 <!-- Criador de Posts -->
                 <section class="social-composer-card">
