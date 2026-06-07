@@ -37,6 +37,8 @@ class MusicController
             'add_playlist'    => $this->addToPlaylist((int) $userId),
             'remove_playlist' => $this->removeFromPlaylist((int) $userId),
             'delete_playlist' => $this->deletePlaylist((int) $userId),
+            'rename_playlist' => $this->renamePlaylist((int) $userId),
+            'delete_account'  => $this->deleteAccount((int) $userId),
             'download'        => $this->download((int) $userId),
             'downloaded'      => $this->downloadedPage((int) $userId),
             'profile'         => $this->profilePage((int) $userId),
@@ -256,6 +258,35 @@ class MusicController
         }
 
         $this->json(['ok' => $this->service->deletePlaylist($playlistId, $userId)]);
+    }
+
+    private function renamePlaylist(int $userId): void
+    {
+        $body = $this->body();
+        $playlistId = (int) ($body['playlist_id'] ?? 0);
+        $name = trim($body['name'] ?? '');
+
+        if (!$playlistId || !$name) {
+            $this->json(['error' => 'Parâmetros inválidos'], 400);
+            return;
+        }
+
+        $ok = $this->service->renamePlaylist($playlistId, $userId, $name);
+        $this->json(['ok' => $ok]);
+    }
+
+    private function deleteAccount(int $userId): void
+    {
+        require_once __DIR__ . '/../model/Usuario.php';
+        $usuarioModel = new Usuario(Conexao::getInstance());
+        
+        $ok = $usuarioModel->deletar($userId);
+        if ($ok) {
+            session_destroy();
+            $this->json(['ok' => true]);
+        } else {
+            $this->json(['error' => 'Erro ao excluir a conta'], 500);
+        }
     }
 
     private function download(int $userId): void

@@ -18,9 +18,13 @@ class AuthController
     public function handle(string $action): void
     {
         match($action) {
-            'login'     => $this->handleLogin(),
-            'cadastro'  => $this->handleCadastro(),
-            'recuperar' => $this->handleRecuperar(),
+            'login'        => $this->handleLogin(),
+            'cadastro'     => $this->handleCadastro(),
+            'recuperar'    => $this->handleRecuperar(),
+            'player'       => $this->view->renderOpenPage('player'),
+            'planos'       => $this->view->renderOpenPage('planos'),
+            'social_media' => $this->view->renderOpenPage('social_media'),
+            'sobre'        => $this->view->renderOpenPage('sobre'),
         };
     }
 

@@ -86,4 +86,11 @@ class PlaylistRepository
             DELETE FROM playlists WHERE id = ? AND user_id = ?
         ")->execute([$playlistId, $userId]);
     }
+
+    public function rename(int $playlistId, int $userId, string $newName): bool
+    {
+        return $this->db->prepare("
+            UPDATE playlists SET name = ? WHERE id = ? AND user_id = ?
+        ")->execute([$newName, $playlistId, $userId]);
+    }
 }

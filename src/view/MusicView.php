@@ -49,6 +49,11 @@ class MusicView
                 echo '</div>';
 
                 $plId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+                if ($plId > 0) {
+                    echo '<div style="margin-top: 0.5rem; display: flex; gap: 10px; margin-bottom: 1rem;">';
+                    echo '<button class="btn-primary-sm btn-rename-playlist-action" data-id="' . $plId . '" data-name="' . htmlspecialchars($title) . '">✎ Renomear Playlist</button>';
+                    echo '</div>';
+                }
                 echo '<section class="music-grid" id="music-list" data-playlist-id="' . $plId . '">';
                 if (empty($musics)) {
                     echo '<div class="empty"><p>' . htmlspecialchars($emptyMsg) . '</p></div>';
@@ -98,6 +103,11 @@ class MusicView
                                 <div class="bio-actions">
                                     <button id="btn-save-bio" class="btn-primary-sm">Salvar Bio</button>
                                 </div>
+                            </div>
+                            <div class="profile-danger-zone" style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                                <h3 style="font-size: 1rem; color: var(--accent2); margin-bottom: 0.5rem; font-family: 'Syne', sans-serif;">Zona de Perigo</h3>
+                                <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem;">A exclusão da conta é permanente e todos os seus dados (playlists, curtidas) serão apagados.</p>
+                                <button id="btn-delete-account" class="btn-primary-sm" style="background: var(--accent2); box-shadow: none;">Excluir Minha Conta</button>
                             </div>
                         </div>
                     </div>

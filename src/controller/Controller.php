@@ -21,17 +21,19 @@ class Controller
     {
         $action = $_POST['action'] ?? $_GET['action'] ?? 'login';
 
-        $authActions = ['login', 'cadastro', 'recuperar'];
+        $authActions = ['login', 'cadastro', 'recuperar', 'player', 'planos', 'social_media', 'sobre'];
 
         $musicActions = [
             'music', 'search', 'preview',
             'like', 'liked',
             'playlist', 'create_playlist', 'add_playlist', 'remove_playlist', 'delete_playlist',
+            'rename_playlist', 'delete_account',
             'download', 'downloaded', 'profile', 'save_bio',
         ];
 
         $socialActions = [
-            'social', 'social_post', 'social_like', 'social_comment', 'social_repost', 'social_view'
+            'social', 'social_post', 'social_like', 'social_comment', 'social_repost', 'social_view',
+            'social_delete_post', 'social_edit_post'
         ];
 
         match (true) {

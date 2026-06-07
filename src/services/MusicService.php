@@ -67,6 +67,11 @@ class MusicService
         return $this->playlistRepo->delete($playlistId, $userId);
     }
 
+    public function renamePlaylist(int $playlistId, int $userId, string $newName): bool
+    {
+        return $this->playlistRepo->rename($playlistId, $userId, $newName);
+    }
+
     public function toggleLike(int $userId, int $musicId, array $musicData): bool
     {
         return $this->musicRepo->toggleLike($userId, $musicId, $musicData);

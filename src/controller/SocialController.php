@@ -27,13 +27,15 @@ class SocialController
         }
 
         match ($action) {
-            'social'         => $this->feed((int) $userId),
-            'social_post'    => $this->createPost((int) $userId),
-            'social_like'    => $this->toggleLike((int) $userId),
-            'social_comment' => $this->createComment((int) $userId),
-            'social_repost'  => $this->createRepost((int) $userId),
-            'social_view'    => $this->viewPost((int) $userId),
-            default          => $this->json(['error' => 'Ação não encontrada'], 404),
+            'social'             => $this->feed((int) $userId),
+            'social_post'        => $this->createPost((int) $userId),
+            'social_like'        => $this->toggleLike((int) $userId),
+            'social_comment'     => $this->createComment((int) $userId),
+            'social_repost'      => $this->createRepost((int) $userId),
+            'social_view'        => $this->viewPost((int) $userId),
+            'social_delete_post' => $this->deletePost((int) $userId),
+            'social_edit_post'   => $this->editPost((int) $userId),
+            default              => $this->json(['error' => 'Ação não encontrada'], 404),
         };
     }
 
@@ -80,8 +82,6 @@ class SocialController
         }
 
         $liked = $this->socialRepo->toggleLike($userId, $postId);
-        
-        // Buscar contagem atualizada
         $postDetails = $this->socialRepo->getPostDetails($postId, $userId);
 
         $this->json([
@@ -121,7 +121,6 @@ class SocialController
             return;
         }
 
-        // Criar o repost
         $repostId = $this->socialRepo->createPost($userId, '', null, null, $postId);
 
         $this->json(['success' => true, 'repost_id' => $repostId]);
@@ -147,6 +146,35 @@ class SocialController
         $userName  = $_SESSION['usuario_nome'] ?? 'U';
 
         $this->view->renderPostDetail($post, $playlists, $userName);
+    }
+
+    private function deletePost(int $userId): void
+    {
+        $body = $this->body();
+        $postId = (int)($body['post_id'] ?? $_POST['post_id'] ?? 0);
+
+        if (!$postId) {
+            $this->json(['error' => 'ID do post inválido.'], 400);
+            return;
+        }
+
+        $ok = $this->socialRepo->deletePost($postId, $userId);
+        $this->json(['success' => $ok]);
+    }
+
+    private function editPost(int $userId): void
+    {
+        $body = $this->body();
+        $postId = (int)($body['post_id'] ?? $_POST['post_id'] ?? 0);
+        $content = trim($body['conteudo'] ?? $_POST['conteudo'] ?? '');
+
+        if (!$postId || $content === '') {
+            $this->json(['error' => 'Parâmetros de edição inválidos.'], 400);
+            return;
+        }
+
+        $ok = $this->socialRepo->updatePost($postId, $userId, $content);
+        $this->json(['success' => $ok]);
     }
 
     private function json(mixed $data, int $status = 200): void

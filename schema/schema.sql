@@ -8,6 +8,8 @@ CREATE TABLE `usuarios` (
   `senha` VARCHAR(255) NOT NULL,
   `cpf` VARCHAR(11) NOT NULL,
   `data_nascimento` DATE NOT NULL,
+  `tipo` VARCHAR(20) NOT NULL DEFAULT 'normal',
+  `bio` VARCHAR(255) DEFAULT NULL,
   `created_at` TIMESTAMP NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
@@ -28,6 +30,7 @@ CREATE TABLE `user_music_status` (
   `music_id` BIGINT(20) NOT NULL,
   `liked` TINYINT(1) DEFAULT 0,
   `downloaded` TINYINT(1) DEFAULT 0,
+  `played_at` TIMESTAMP NULL DEFAULT NULL,
   PRIMARY KEY (`user_id`, `music_id`),
   FOREIGN KEY (`user_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`music_id`) REFERENCES `musics` (`id`) ON DELETE CASCADE ON UPDATE CASCADE

@@ -77,25 +77,21 @@ class Conexao {
                 ");
             }
 
-            // Auto migration: add played_at column to user_music_status if it doesn't exist
             $stmtCol = $pdo->query("SHOW COLUMNS FROM `user_music_status` LIKE 'played_at'");
             if ($stmtCol->rowCount() === 0) {
                 $pdo->exec("ALTER TABLE `user_music_status` ADD COLUMN `played_at` TIMESTAMP NULL DEFAULT NULL");
             }
 
-            // Auto migration: add bio column to usuarios if it doesn't exist
             $stmtBio = $pdo->query("SHOW COLUMNS FROM `usuarios` LIKE 'bio'");
             if ($stmtBio->rowCount() === 0) {
                 $pdo->exec("ALTER TABLE `usuarios` ADD COLUMN `bio` VARCHAR(255) DEFAULT NULL");
             }
 
-            // Auto migration: add tipo column to usuarios if it doesn't exist
             $stmtTipo = $pdo->query("SHOW COLUMNS FROM `usuarios` LIKE 'tipo'");
             if ($stmtTipo->rowCount() === 0) {
                 $pdo->exec("ALTER TABLE `usuarios` ADD COLUMN `tipo` VARCHAR(20) NOT NULL DEFAULT 'normal'");
             }
         } catch (PDOException $e) {
-            // Silently ignore to avoid breaking the application
         }
     }
 }

@@ -29,7 +29,6 @@ class SocialRepository
 
     public function getFeed(int $userId): array
     {
-        // 1. Buscar todas as postagens cronologicamente (decrescente)
         $stmt = $this->db->prepare("
             SELECT 
                 p.id,
@@ -61,8 +60,6 @@ class SocialRepository
             INNER JOIN usuarios u ON u.id = p.usuario_id
             LEFT JOIN musics m ON m.id = p.musica_id
             LEFT JOIN playlists pl ON pl.id = p.playlist_id
-            
-            -- Joins para posts originais se for um repost
             LEFT JOIN posts orig_p ON orig_p.id = p.original_post_id
             LEFT JOIN usuarios orig_u ON orig_u.id = orig_p.usuario_id
             LEFT JOIN musics orig_m ON orig_m.id = orig_p.musica_id
@@ -76,7 +73,6 @@ class SocialRepository
         foreach ($posts as &$post) {
             $postId = (int)$post['id'];
 
-            // 2. Obter contagem de likes e status de "curtido" pelo usuário logado
             $stmtLike = $this->db->prepare("
                 SELECT COUNT(*) AS total, 
                        SUM(CASE WHEN usuario_id = ? THEN 1 ELSE 0 END) AS liked
@@ -88,14 +84,12 @@ class SocialRepository
             $post['likes_count'] = (int)$likeInfo['total'];
             $post['liked'] = $likeInfo['liked'] > 0;
 
-            // 3. Obter contagem total de comentários
             $stmtCountComm = $this->db->prepare("
                 SELECT COUNT(*) FROM post_comments WHERE post_id = ?
             ");
             $stmtCountComm->execute([$postId]);
             $post['comments_count'] = (int)$stmtCountComm->fetchColumn();
 
-            // 4. Obter apenas os top 3 comentários
             $stmtComm = $this->db->prepare("
                 SELECT c.id, c.conteudo, c.created_at, u.nome AS autor_nome, u.tipo AS autor_tipo
                 FROM post_comments c
@@ -159,7 +153,6 @@ class SocialRepository
 
         if (!$post) return null;
 
-        // Obter contagem de likes e status de "curtido" pelo usuário logado
         $stmtLike = $this->db->prepare("
             SELECT COUNT(*) AS total, 
                    SUM(CASE WHEN usuario_id = ? THEN 1 ELSE 0 END) AS liked
@@ -171,7 +164,6 @@ class SocialRepository
         $post['likes_count'] = (int)$likeInfo['total'];
         $post['liked'] = $likeInfo['liked'] > 0;
 
-        // Obter todos os comentários cronologicamente
         $stmtComm = $this->db->prepare("
             SELECT c.id, c.conteudo, c.created_at, u.nome AS autor_nome, u.tipo AS autor_tipo
             FROM post_comments c
@@ -199,13 +191,13 @@ class SocialRepository
                 DELETE FROM post_likes WHERE post_id = ? AND usuario_id = ?
             ");
             $stmtDel->execute([$postId, $userId]);
-            return false; // unliked
+            return false;
         } else {
             $stmtIns = $this->db->prepare("
                 INSERT INTO post_likes (post_id, usuario_id) VALUES (?, ?)
             ");
             $stmtIns->execute([$postId, $userId]);
-            return true; // liked
+            return true;
         }
     }
 
@@ -217,5 +209,21 @@ class SocialRepository
         ");
         $stmt->execute([$postId, $userId, $content]);
         return (int) $this->db->lastInsertId();
+    }
+
+    public function deletePost(int $postId, int $userId): bool
+    {
+        $stmt = $this->db->prepare("
+            DELETE FROM posts WHERE id = ? AND usuario_id = ?
+        ");
+        return $stmt->execute([$postId, $userId]);
+    }
+
+    public function updatePost(int $postId, int $userId, string $content): bool
+    {
+        $stmt = $this->db->prepare("
+            UPDATE posts SET conteudo = ? WHERE id = ? AND usuario_id = ?
+        ");
+        return $stmt->execute([$content, $postId, $userId]);
     }
 }

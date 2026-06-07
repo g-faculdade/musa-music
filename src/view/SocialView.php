@@ -15,7 +15,6 @@ class SocialView extends MusicView
                 ?>
                 <h2 class="section-title">☰ Musa Social</h2>
                 
-                <!-- Criador de Posts -->
                 <section class="social-composer-card">
                     <form id="social-post-form" class="social-form">
                         <div class="composer-header">
@@ -61,7 +60,6 @@ class SocialView extends MusicView
                     </form>
                 </section>
 
-                <!-- Feed de Posts -->
                 <section class="social-feed" id="social-feed-list">
                     <?php if (empty($feed)): ?>
                         <div class="empty"><p>Nenhum post no feed ainda. Seja o primeiro a postar!</p></div>
@@ -90,10 +88,8 @@ class SocialView extends MusicView
                 </div>
 
                 <section class="social-detail-container">
-                    <!-- Post Principal -->
                     <?= $this->renderPostCard($post, true) ?>
 
-                    <!-- Form de Comentário -->
                     <div class="comment-composer">
                         <h3 class="composer-title">Responder</h3>
                         <form id="social-comment-form" data-post-id="<?= $post['id'] ?>" class="comment-form-row">
@@ -102,7 +98,6 @@ class SocialView extends MusicView
                         </form>
                     </div>
 
-                    <!-- Lista de Comentários Completa -->
                     <div class="comments-section-full">
                         <h3 class="composer-title">Respostas (<?= $post['comments_count'] ?>)</h3>
                         <div class="comments-list-full">
@@ -162,7 +157,6 @@ class SocialView extends MusicView
             <?php endif; ?>
 
             <div class="post-body">
-                <!-- Avatar do Autor -->
                 <div class="post-avatar">
                     <span>
                         <?php 
@@ -173,7 +167,6 @@ class SocialView extends MusicView
                 </div>
 
                 <div class="post-main">
-                    <!-- Cabeçalho (Nome + Tempo) -->
                     <div class="post-header">
                         <span class="post-author">
                             <?= htmlspecialchars($autor) ?>
@@ -188,15 +181,15 @@ class SocialView extends MusicView
                         <span class="post-time"><?= $this->timeElapsed($post['created_at']) ?></span>
                     </div>
 
-                    <!-- Conteúdo do Texto -->
-                    <p class="post-text">
-                        <?php 
-                        $text = $isRepost ? $post['orig_conteudo'] : $post['conteudo'];
-                        echo htmlspecialchars($text); 
-                        ?>
-                    </p>
+                    <div class="post-text-container">
+                        <p class="post-text">
+                            <?php 
+                            $text = $isRepost ? $post['orig_conteudo'] : $post['conteudo'];
+                            echo htmlspecialchars($text); 
+                            ?>
+                        </p>
+                    </div>
 
-                    <!-- Anexo (Música ou Playlist) -->
                     <?php
                     $musicId = $isRepost ? $post['orig_musica_id'] : $post['musica_id'];
                     $playlistId = $isRepost ? $post['orig_playlist_id'] : $post['playlist_id'];
@@ -213,7 +206,7 @@ class SocialView extends MusicView
                             'artist'     => $mArtist,
                             'cover'      => $mCover,
                             'duration'   => $mDur,
-                            'liked'      => false, // Será atualizado dinamicamente no client
+                            'liked'      => false,
                             'downloaded' => false
                         ];
                         
@@ -237,7 +230,6 @@ class SocialView extends MusicView
                     }
                     ?>
 
-                    <!-- Ações -->
                     <div class="post-actions">
                         <button class="social-btn btn-social-like <?= $post['liked'] ? 'liked' : '' ?>" data-id="<?= $postId ?>" title="Curtir">
                             ♥ <span class="like-count"><?= $post['likes_count'] ?></span>
@@ -256,9 +248,21 @@ class SocialView extends MusicView
                         <button class="social-btn btn-social-repost" data-id="<?= $postId ?>" title="Repostar">
                             🔁 Repostar
                         </button>
+
+                        <?php 
+                        $isOwner = (isset($_SESSION['usuario_id']) && (int)$_SESSION['usuario_id'] === (int)$post['usuario_id']);
+                        if ($isOwner && !$isRepost): ?>
+                            <button class="social-btn btn-social-edit" data-id="<?= $postId ?>" title="Editar Post">
+                                ✎ Editar
+                            </button>
+                        <?php endif; ?>
+                        <?php if ($isOwner): ?>
+                            <button class="social-btn btn-social-delete" data-id="<?= $postId ?>" title="Excluir Post" style="color: var(--accent2);">
+                                🗑 Excluir
+                            </button>
+                        <?php endif; ?>
                     </div>
 
-                    <!-- Seção de Comentários (Apenas Feed) -->
                     <?php if (!$isDetail): ?>
                         <div class="post-comments-quick-list">
                             <?php if (!empty($post['top_comments'])): ?>

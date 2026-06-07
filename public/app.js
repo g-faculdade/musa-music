@@ -532,8 +532,6 @@ function hideToast() { toastEl.classList.remove('show'); }
 rebuildQueue();
 
 
-// === SPA / AJAX Navigation ===
-
 document.addEventListener('click', e => {
     const link = e.target.closest('a');
     if (!link) return;
@@ -601,8 +599,6 @@ window.addEventListener('popstate', e => {
     }
 });
 
-// === Background pre-fetching ===
-
 function prefetchNext(idx) {
     const nextIdx = idx < STATE.queue.length - 1 ? idx + 1 : 0;
     if (nextIdx === idx || nextIdx < 0 || nextIdx >= STATE.queue.length) return;
@@ -614,10 +610,7 @@ function prefetchNext(idx) {
     fetch(url).catch(() => {});
 }
 
-// === MUSA Social Interaction Listeners ===
-
 document.addEventListener('submit', async e => {
-    // 1. Criar novo post
     if (e.target.id === 'social-post-form') {
         e.preventDefault();
         const content = document.getElementById('post-content').value.trim();
@@ -655,7 +648,6 @@ document.addEventListener('submit', async e => {
         }
     }
 
-    // 2. Enviar resposta/comentário
     if (e.target.id === 'social-comment-form') {
         e.preventDefault();
         const postId = parseInt(e.target.dataset.postId);
@@ -685,7 +677,6 @@ document.addEventListener('submit', async e => {
 });
 
 document.addEventListener('click', async e => {
-    // 3. Curtir Post
     const btnLike = e.target.closest('.btn-social-like');
     if (btnLike) {
         e.preventDefault();
@@ -716,7 +707,6 @@ document.addEventListener('click', async e => {
         return;
     }
 
-    // 4. Repostar Post
     const btnRepost = e.target.closest('.btn-social-repost');
     if (btnRepost) {
         e.preventDefault();
@@ -743,11 +733,173 @@ document.addEventListener('click', async e => {
         }
         return;
     }
+
+    const btnDelPost = e.target.closest('.btn-social-delete');
+    if (btnDelPost) {
+        e.preventDefault();
+        if (!confirm('Deseja realmente excluir esta publicação?')) return;
+        const postId = parseInt(btnDelPost.dataset.id);
+        btnDelPost.disabled = true;
+
+        try {
+            const res = await fetch('?action=social_delete_post&ajax=1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: postId })
+            });
+
+            if (!res.ok) throw new Error();
+            showToast('Publicação excluída!');
+            
+            const card = btnDelPost.closest('.social-post-card');
+            if (card) {
+                card.remove();
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao excluir a publicação.');
+            btnDelPost.disabled = false;
+        }
+        return;
+    }
+
+    const btnEditPost = e.target.closest('.btn-social-edit');
+    if (btnEditPost) {
+        e.preventDefault();
+        const card = btnEditPost.closest('.social-post-card');
+        const textContainer = card.querySelector('.post-text-container');
+        if (!textContainer || textContainer.querySelector('textarea')) return;
+
+        const originalText = textContainer.querySelector('.post-text').textContent.trim();
+        textContainer.dataset.originalText = originalText;
+
+        textContainer.innerHTML = `
+            <textarea class="edit-post-textarea" style="width:100%; min-height:80px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px; color:var(--text); font-family:inherit; margin-bottom:10px; resize:vertical; outline:none; font-size:0.9rem;">${originalText}</textarea>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-bottom: 10px;">
+                <button class="btn-cancel-edit" style="padding:5px 12px; background:var(--border); border:none; border-radius:6px; color:var(--muted); cursor:pointer; font-size:0.8rem;">Cancelar</button>
+                <button class="btn-save-edit" style="padding:5px 12px; background:linear-gradient(135deg, var(--accent), var(--accent2)); border:none; border-radius:6px; color:#fff; cursor:pointer; font-size:0.8rem; font-weight:700;">Salvar</button>
+            </div>
+        `;
+        return;
+    }
+
+    const btnSaveEdit = e.target.closest('.btn-save-edit');
+    if (btnSaveEdit) {
+        e.preventDefault();
+        const card = btnSaveEdit.closest('.social-post-card');
+        const textContainer = card.querySelector('.post-text-container');
+        const textarea = textContainer.querySelector('.edit-post-textarea');
+        const newText = textarea.value.trim();
+        if (newText === '') {
+            textarea.focus();
+            return;
+        }
+
+        btnSaveEdit.disabled = true;
+        const postId = parseInt(card.dataset.id);
+
+        try {
+            const res = await fetch('?action=social_edit_post&ajax=1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: postId, conteudo: newText })
+            });
+
+            if (!res.ok) throw new Error();
+            showToast('Publicação atualizada!');
+            textContainer.innerHTML = `<p class="post-text">${esc(newText)}</p>`;
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao salvar alteração.');
+            btnSaveEdit.disabled = false;
+        }
+        return;
+    }
+
+    const btnCancelEdit = e.target.closest('.btn-cancel-edit');
+    if (btnCancelEdit) {
+        e.preventDefault();
+        const card = btnCancelEdit.closest('.social-post-card');
+        const textContainer = card.querySelector('.post-text-container');
+        const originalText = textContainer.dataset.originalText;
+        textContainer.innerHTML = `<p class="post-text">${esc(originalText)}</p>`;
+        return;
+    }
+
+    const btnDelAcc = e.target.closest('#btn-delete-account');
+    if (btnDelAcc) {
+        e.preventDefault();
+        if (!confirm('ATENÇÃO: Deseja realmente excluir permanentemente sua conta? Esta ação não pode ser desfeita.')) return;
+        btnDelAcc.disabled = true;
+
+        try {
+            const res = await fetch('?action=delete_account&ajax=1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!res.ok) throw new Error();
+            showToast('Conta excluída com sucesso!');
+            setTimeout(() => {
+                window.location.href = '?action=login';
+            }, 1500);
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao excluir conta.');
+            btnDelAcc.disabled = false;
+        }
+        return;
+    }
+
+    const btnRenamePl = e.target.closest('.btn-rename-playlist-action');
+    if (btnRenamePl) {
+        e.preventDefault();
+        const plId = parseInt(btnRenamePl.dataset.id);
+        const currentName = btnRenamePl.dataset.name;
+        const newName = prompt('Digite o novo nome para esta playlist:', currentName);
+        if (newName === null) return;
+        const trimmed = newName.trim();
+        if (trimmed === '' || trimmed === currentName) return;
+
+        btnRenamePl.disabled = true;
+
+        try {
+            const res = await fetch('?action=rename_playlist&ajax=1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playlist_id: plId, name: trimmed })
+            });
+
+            if (!res.ok) throw new Error();
+            showToast('Playlist renomeada!');
+            
+            const titleEl = document.querySelector('.collection-title');
+            if (titleEl) {
+                titleEl.textContent = trimmed;
+            }
+            btnRenamePl.dataset.name = trimmed;
+
+            const sidebarPlLink = document.querySelector(`.playlist-item[data-id="${plId}"] a`);
+            if (sidebarPlLink) {
+                sidebarPlLink.textContent = trimmed;
+                sidebarPlLink.title = trimmed;
+            }
+
+            const plObj = STATE.playlists.find(p => p.id === plId);
+            if (plObj) {
+                plObj.name = trimmed;
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Erro ao renomear playlist.');
+        } finally {
+            btnRenamePl.disabled = false;
+        }
+        return;
+    }
 });
 
-// Waveform visualizer drawing & animation engine (SoundCloud style)
 function setupAudioVisualizer() {
-    // CORS-safe implementation: visualizer runs dynamically in JS to guarantee perfect audio playback
 }
 
 function generateSignatureWaveform(title, artist) {
@@ -797,16 +949,13 @@ function drawWaveform() {
         let scale = 1.0;
         
         if (!audio.paused) {
-            // Pulse base frequency (beat)
             const beat = Math.sin(time * 3.5) * Math.cos(time * 1.5);
             const activeBeat = Math.max(0, beat) * 0.4;
-            
-            // Traveling wave along the bar indices
+
             const wave = Math.sin(time * 2.0 - i * 0.25) * 0.25;
-            
-            // Micro-jitter to simulate high-frequency ticks
+
             const jitter = Math.sin(time * 15.0 + i) * 0.08;
-            
+
             scale = 0.55 + activeBeat + wave + jitter;
         }
         
@@ -841,5 +990,4 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.fill();
 }
 
-// Start continuous animation loop
 requestAnimationFrame(drawWaveform);
